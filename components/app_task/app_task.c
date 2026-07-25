@@ -56,7 +56,7 @@ static void app_worker_task_routine(void *pvParameters)
         }
 
         // Periodic loop interval (2 seconds)
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 }
 
