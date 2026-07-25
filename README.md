@@ -24,7 +24,74 @@ This project showcases expertise in:
 *   **UART Communication**: Dedicated for reliable, low-level serial communication with BMS units.
 *   **GPIO Management**: For controlling status LEDs and monitoring physical buttons.
 
-## Architecture & Design Patterns
+### System Architecture Data Flow
+
+```mermaid
+flowchart LR
+    subgraph Cloud ["Cloud & User Layer"]
+        USER([Field Engineer])
+        BROKER((MQTT Broker))
+    end
+
+    subgraph Firmware ["ESP32 Core Firmware (esp-ubis)"]
+        WEB[web_server AP Portal]
+        NVS[(NVS Storage)]
+        BMS_MGR[bms_manager]
+        APP[app_task worker]
+        MQTT[mqtt_manager]
+        LED_MGR[led_manager]
+        BTN_MGR[button_manager]
+    end
+
+    subgraph Hardware ["Edge Hardware Layer"]
+        BAT([Battery Pack])
+        BMS_HW{BMS Hardware}
+        BTN((BOOT Button))
+        LED_HW((Status LED))
+    end
+
+    %% Edge to Firmware Links
+    BAT --- BMS_HW
+    BMS_HW ==>|"Universal Bus<br/>(UART, CAN, I2C...)"| BMS_MGR
+    BTN -->|"Hardware ISR"| BTN_MGR
+    
+    %% Firmware Internal Main Pipeline
+    BMS_MGR -->|"1. Parsed Data"| APP
+    APP -->|"2. JSON Payload"| MQTT
+    
+    %% NVS & Config Routing
+    USER -.->|"Wi-Fi / HTTP"| WEB
+    WEB -.->|"Write Credentials"| NVS
+    NVS -.->|"Read BMS Type"| BMS_MGR
+    NVS -.->|"Read URI/Certs"| MQTT
+    
+    %% Errors & Fallbacks
+    MQTT -.->|"Error: Disconnected"| WEB
+    APP -.->|"Error: BMS Lost"| LED_MGR
+    WEB -.->|"State: Provisioning"| LED_MGR
+    BTN_MGR -.->|"5s Press: Format"| NVS
+    
+    %% Firmware to Edge/Cloud
+    LED_MGR -->|"Drive GPIO"| LED_HW
+    MQTT ===>|"MQTTS (Port 8883)"| BROKER
+
+    %% Styling
+    classDef core fill:#0f4c75,stroke:#3282b8,stroke-width:2px,color:#fff;
+    classDef hw fill:#1b262c,stroke:#bbe1fa,stroke-width:2px,color:#fff;
+    classDef net fill:#222831,stroke:#f0a500,stroke-width:2px,color:#fff;
+
+    class BMS_MGR,APP,MQTT,WEB,NVS,LED_MGR,BTN_MGR core;
+    class BAT,BMS_HW,BTN,LED_HW hw;
+    class BROKER,USER net;
+```
+
+#### Diagram Legend
+
+| Line Type | Arrow Symbol | Description & Behavior |
+| :--- | :---: | :--- |
+| **Primary Data Flow** | ───▶ | Standard, continuous operational logic (e.g., passing structs, JSON packing). |
+| **Secure / Hard Link** | ═══▶ | Physical hardware signals (UART, GPIO) or TLS 1.2+ Encrypted Network Traffic. |
+| **Config & Fallback** | - - -▶ | Configuration reads/writes to NVS, or system falling back to AP mode upon errors. |
 
 ### Modular Component-Based Structure
 The project adheres to a modular component-based architecture, characteristic of well-structured ESP-IDF projects. Each core functionality is encapsulated within its own `components/` subdirectory, promoting high cohesion, low coupling, reusability, and ease of maintenance. This structure is crucial for managing complexity in industrial-grade embedded systems.
