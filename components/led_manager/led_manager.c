@@ -1,6 +1,6 @@
 /**
  * @file led_manager.c
- * @brief Implementation of non-blocking FreeRTOS-backed status LED manager.
+ * @brief Implementation of non-blocking FreeRTOS-backed status LED manager with thread safety.
  */
 
 #include "led_manager.h"
@@ -8,6 +8,7 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 /// Logging tag for LED Manager module
 static const char *TAG = "LED_MGR";
@@ -18,6 +19,8 @@ static const char *TAG = "LED_MGR";
 static led_mode_t s_current_mode = LED_MODE_OFF;
 /// Handle for the background LED pattern execution task
 static TaskHandle_t s_led_task_handle = NULL;
+/// Mutex handle for thread-safe mode switching
+static SemaphoreHandle_t s_led_mutex = NULL;
 
 /**
  * @brief Background task running non-blocking LED patterns based on current mode.
@@ -28,9 +31,18 @@ static void led_task(void *pvParameters)
 {
     (void)pvParameters;
     bool led_state = false;
+    led_mode_t local_mode;
 
     while (1) {
-        switch (s_current_mode) {
+        // Safely fetch current mode using mutex to prevent race conditions
+        if (xSemaphoreTake(s_led_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+            local_mode = s_current_mode;
+            xSemaphoreGive(s_led_mutex);
+        } else {
+            local_mode = s_current_mode; // Fallback
+        }
+
+        switch (local_mode) {
             case LED_MODE_OFF:
                 gpio_set_level(CONFIG_STATUS_LED_GPIO, 0);
                 vTaskDelay(pdMS_TO_TICKS(500));
@@ -66,11 +78,18 @@ static void led_task(void *pvParameters)
 /**
  * @brief Initializes the onboard LED GPIO and starts the background control task.
  * 
- * @return esp_err_t ESP_OK on success, or ESP_ERR_NO_MEM if task allocation fails.
+ * @return esp_err_t ESP_OK on success, or an error code on failure.
  */
 esp_err_t led_manager_init(void)
 {
     ESP_LOGI(TAG, "Initializing status LED manager on GPIO %d...", CONFIG_STATUS_LED_GPIO);
+
+    // Create mutex for thread-safe state protection
+    s_led_mutex = xSemaphoreCreateMutex();
+    if (s_led_mutex == NULL) {
+        ESP_LOGE(TAG, "Failed to create LED mutex!");
+        return ESP_ERR_NO_MEM;
+    }
 
     gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << CONFIG_STATUS_LED_GPIO),
@@ -94,6 +113,7 @@ esp_err_t led_manager_init(void)
 
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create LED task!");
+        vSemaphoreDelete(s_led_mutex);
         return ESP_ERR_NO_MEM;
     }
 
@@ -102,12 +122,22 @@ esp_err_t led_manager_init(void)
 }
 
 /**
- * @brief Sets the current operational mode of the status LED.
+ * @brief Sets the current operational mode of the status LED thread-safely.
  * 
  * @param mode Target LED mode (`led_mode_t`).
  */
 void led_manager_set_mode(led_mode_t mode)
 {
-    s_current_mode = mode;
-    ESP_LOGI(TAG, "LED mode changed to: %d", mode);
+    if (s_led_mutex == NULL) {
+        s_current_mode = mode;
+        return;
+    }
+
+    if (xSemaphoreTake(s_led_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        if (s_current_mode != mode) {
+            s_current_mode = mode;
+            ESP_LOGI(TAG, "LED mode changed to: %d", mode);
+        }
+        xSemaphoreGive(s_led_mutex);
+    }
 }
