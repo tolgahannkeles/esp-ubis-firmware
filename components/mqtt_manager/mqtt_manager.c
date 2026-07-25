@@ -123,12 +123,23 @@ esp_err_t mqtt_manager_init(void)
 
     // Secure MQTT configuration structure (TLS + mTLS CA Certificate + Auth)
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = broker_uri,
-        .broker.verification.certificate = ca_crt_start,
-        .credentials.username = "esp32",
-        .credentials.authentication.password = "123456",
-        .session.keepalive = 60,       // Keep-alive timeout to detect dead links early
-        .network.timeout_ms = 5000,    // Connection timeout safeguard
+        .broker = {
+            .address.uri = broker_uri,
+            .verification = {
+                .certificate = ca_crt_start,
+                .skip_cert_common_name_check = true
+            }
+        },
+        .credentials = {
+            .username = "esp32",
+            .authentication.password = "123456"
+        },
+        .session = {
+            .keepalive = 60 // Keep-alive timeout to detect dead links early
+        },
+        .network = {
+            .timeout_ms = 5000 // Connection timeout safeguard
+        }
     };
 
     // Initialize MQTT client instance with memory allocation check
