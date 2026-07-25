@@ -199,8 +199,12 @@ static void wifi_test_task(void *pvParameters)
             nvs_manager_write_str(NVS_NAMESPACE, "bms_type", params->bms_type);
             nvs_manager_write_str(NVS_NAMESPACE, "mqtt_uri", clean_mqtt_uri);
 
-            // Verification successful: Switch LED to normal operation mode (off/solid)
+            // Verification successful: Switch LED to normal operation mode
             led_manager_set_mode(LED_MODE_OFF);
+
+            ESP_LOGI(TAG, "Configuration saved successfully. Rebooting device to apply new BMS and network settings...");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            esp_restart();
         } else {
             ESP_LOGW(TAG, "WARNING: MQTT broker unreachable. Restoring AP provisioning portal...");
             is_connected = false;

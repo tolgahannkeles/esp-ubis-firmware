@@ -1,11 +1,13 @@
 /**
  * @file bms_manager.c
- * @brief Implementation of BMS Manager orchestrator and driver selection pattern.
+ * @brief Implementation of BMS Manager orchestrator and driver selection pattern with LED status integration.
  */
 
 #include "bms_manager.h"
 #include "bms_driver_jbd.h"
+#include "bms_driver_daly.h"
 #include "nvs_manager.h"
+#include "led_manager.h"
 #include "esp_log.h"
 #include <string.h>
 
@@ -25,6 +27,8 @@ esp_err_t bms_manager_init(void)
 
     if (strcmp(bms_type, "JBD") == 0 || strcmp(bms_type, "AUTO") == 0) {
         s_active_driver = bms_driver_jbd_get_driver();
+    } else if (strcmp(bms_type, "DALY") == 0) {
+        s_active_driver = bms_driver_daly_get_driver();
     } else {
         ESP_LOGW(TAG, "Unknown or unsupported BMS type '%s'. Defaulting to JBD.", bms_type);
         s_active_driver = bms_driver_jbd_get_driver();
@@ -32,17 +36,29 @@ esp_err_t bms_manager_init(void)
 
     if (s_active_driver && s_active_driver->init) {
         ESP_LOGI(TAG, "Initializing active BMS driver: %s", s_active_driver->name);
-        return s_active_driver->init();
+        esp_err_t err = s_active_driver->init();
+        if (err != ESP_OK) {
+            led_manager_set_mode(LED_MODE_ERROR);
+        }
+        return err;
     }
 
     ESP_LOGE(TAG, "No active BMS driver could be initialized!");
+    led_manager_set_mode(LED_MODE_ERROR);
     return ESP_FAIL;
 }
 
 esp_err_t bms_manager_read(bms_data_t *data)
 {
     if (s_active_driver && s_active_driver->read_data) {
-        return s_active_driver->read_data(data);
+        esp_err_t err = s_active_driver->read_data(data);
+        if (err != ESP_OK || !data->is_online) {
+            led_manager_set_mode(LED_MODE_ERROR);
+        } else {
+            led_manager_set_mode(LED_MODE_OFF);
+        }
+        return err;
     }
+    led_manager_set_mode(LED_MODE_ERROR);
     return ESP_FAIL;
 }

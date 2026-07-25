@@ -39,6 +39,8 @@ static void button_long_press_timer_callback(TimerHandle_t xTimer)
         // Clear Wi-Fi credentials via nvs_manager
         nvs_manager_write_str(NVS_NAMESPACE, "wifi_ssid", "");
         nvs_manager_write_str(NVS_NAMESPACE, "wifi_pass", "");
+        nvs_manager_write_str(NVS_NAMESPACE, "bms_type", "");
+        nvs_manager_write_str(NVS_NAMESPACE, "mqtt_uri", "");
         ESP_LOGI(TAG, "Stored Wi-Fi credentials cleared.");
 
         // Reboot into AP provisioning mode
