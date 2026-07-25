@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content='width=device-width, initial-scale=1.0'>
+    <title>ESP UBIS Config</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; box-sizing: border-box; }
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        label { font-weight: bold; color: #555; display: block; margin-top: 10px; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; margin-top: 20px; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+    </style>
+</head>
+<body>
+    <div class='card'>
+        <h2>ESP UBIS Config</h2>
+        <form action='/save' method='POST'>
+            <label>Wi-Fi SSID:</label>
+            <input type='text' name='ssid' required>
+            <label>Wi-Fi Password:</label>
+            <input type='password' name='pass'>
+            <label>BMS Type:</label>
+            <select name='bms'>
+                <option value='AUTO'>Auto-Detect</option>
+                <option value='JBD'>JBD (Xiaoxiang)</option>
+                <option value='DALY'>Daly BMS</option>
+            </select>
+            <button type='submit'>Connect & Save</button>
+        </form>
+    </div>
+</body>
+</html>
