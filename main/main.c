@@ -2,7 +2,8 @@
  * @file main.c
  * @brief Main application entry point and system orchestration for ESP UBIS firmware.
  * @details Sequentially initializes non-volatile storage, network interfaces, 
- *          provisioning portal, secure MQTT client, BMS driver layer, and application worker tasks.
+ *          provisioning portal, secure MQTT client, BMS driver layer, application worker tasks,
+ *          and hardware button manager for AP provisioning resets.
  */
 
 #include <stdio.h>
@@ -13,6 +14,7 @@
 #include "bms_manager.h"
 #include "mqtt_manager.h"
 #include "app_task.h"
+#include "button_manager.h"
 
 /// Logging tag for Main Application module
 static const char *TAG = "UBIS_MAIN";
@@ -70,6 +72,14 @@ void app_main(void)
         ESP_LOGE(TAG, "CRITICAL: Failed to initialize application worker task! (err: %d)", err);
     } else {
         ESP_LOGI(TAG, "Application worker task spawned successfully.");
+    }
+
+    // 7. Initialize Hardware BOOT Button Manager (Interrupt-driven 5s long-press reset)
+    err = button_manager_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize button manager! (err: %d)", err);
+    } else {
+        ESP_LOGI(TAG, "Button manager initialized successfully.");
     }
 
     ESP_LOGI(TAG, "Firmware full boot sequence completed successfully.");
