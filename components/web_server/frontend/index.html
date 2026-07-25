@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content='width=device-width, initial-scale=1.0'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP UBIS Config</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
@@ -15,20 +15,26 @@
     </style>
 </head>
 <body>
-    <div class='card'>
+    <div class="card">
         <h2>ESP UBIS Config</h2>
-        <form action='/save' method='POST'>
+        <form action="/save" method="POST">
             <label>Wi-Fi SSID:</label>
-            <input type='text' name='ssid' required>
+            <input type="text" name="ssid" required>
+            
             <label>Wi-Fi Password:</label>
-            <input type='password' name='pass'>
+            <input type="password" name="pass">
+            
             <label>BMS Type:</label>
-            <select name='bms'>
-                <option value='AUTO'>Auto-Detect</option>
-                <option value='JBD'>JBD (Xiaoxiang)</option>
-                <option value='DALY'>Daly BMS</option>
+            <select name="bms">
+                <option value="AUTO">Auto-Detect</option>
+                <option value="JBD">JBD (Xiaoxiang)</option>
+                <option value="DALY">Daly BMS</option>
             </select>
-            <button type='submit'>Connect & Save</button>
+
+            <label>MQTT Broker URI:</label>
+            <input type="text" name="mqtt_uri" value="mqtts://192.168.1.109:8883" placeholder="mqtts://192.168.1.109:8883" required>
+
+            <button type="submit">Connect & Save</button>
         </form>
     </div>
 </body>
