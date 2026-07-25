@@ -1,9 +1,10 @@
 /**
  * @file network_manager.c
- * @brief Implementation of network initialization, dynamic AP lifecycle control, and STA testing.
+ * @brief Implementation of network initialization, dynamic AP lifecycle control, and STA testing with LED integration.
  */
 
 #include "network_manager.h"
+#include "led_manager.h"
 #include "esp_wifi.h"
 #include "esp_mac.h"
 #include "esp_event.h"
@@ -31,8 +32,9 @@ static int s_retry_num = 0;
  * @param event_data Event payload data.
  */
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                               int32_t event_id, void* event_data)
+                                int32_t event_id, void* event_data)
 {
+    (void)arg;
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -47,6 +49,10 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
+        
+        // IP obtained, Wi-Fi successfully connected. Set LED to normal state.
+        led_manager_set_mode(LED_MODE_OFF);
+
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }

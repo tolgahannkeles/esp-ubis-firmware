@@ -1,12 +1,13 @@
 /**
  * @file web_server.c
  * @brief Implementation of HTTP provisioning portal, NVS credential validation, 
- *        defensive URL parsing, and robust error handling for ESP32.
+ *        defensive URL parsing, and robust error handling for ESP32 with LED status integration.
  */
 
 #include "web_server.h"
 #include "network_manager.h"
 #include "nvs_manager.h"
+#include "led_manager.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -197,6 +198,9 @@ static void wifi_test_task(void *pvParameters)
             nvs_manager_write_str(NVS_NAMESPACE, "wifi_pass", params->password);
             nvs_manager_write_str(NVS_NAMESPACE, "bms_type", params->bms_type);
             nvs_manager_write_str(NVS_NAMESPACE, "mqtt_uri", clean_mqtt_uri);
+
+            // Verification successful: Switch LED to normal operation mode (off/solid)
+            led_manager_set_mode(LED_MODE_OFF);
         } else {
             ESP_LOGW(TAG, "WARNING: MQTT broker unreachable. Restoring AP provisioning portal...");
             is_connected = false;
@@ -205,7 +209,11 @@ static void wifi_test_task(void *pvParameters)
 
     if (!is_connected) {
         ESP_LOGE(TAG, "FAILURE: Connection check failed. Restoring AP provisioning portal...");
+        led_manager_set_mode(LED_MODE_ERROR);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
         network_manager_start_ap();
+        led_manager_set_mode(LED_MODE_PROVISIONING); // Re-entered AP mode, fast blink
         vTaskDelay(pdMS_TO_TICKS(200));
         start_http_server();
     }
@@ -323,6 +331,7 @@ esp_err_t web_server_init_portal(void)
 
             if (is_mqtt_reachable) {
                 ESP_LOGI(TAG, "SUCCESS: Authenticated via stored NVS credentials & MQTT verified. Portal bypassed.");
+                led_manager_set_mode(LED_MODE_OFF); // Successful boot, normal mode
                 return ESP_OK;
             } else {
                 ESP_LOGW(TAG, "WARNING: Stored MQTT broker is unreachable. Falling back to AP provisioning mode.");
@@ -337,6 +346,9 @@ esp_err_t web_server_init_portal(void)
     ESP_LOGI(TAG, "Activating Access Point mode and launching configuration web server...");
     ESP_ERROR_CHECK(network_manager_start_ap());
     ESP_ERROR_CHECK(start_http_server());
+    
+    // AP provisioning mode active, start fast blinking on status LED
+    led_manager_set_mode(LED_MODE_PROVISIONING);
 
     return ESP_OK;
 }
